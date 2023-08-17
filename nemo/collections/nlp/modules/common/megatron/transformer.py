@@ -15,7 +15,7 @@
 
 """Transformer."""
 from contextlib import nullcontext
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union, Tuple
 
 import torch
 import torch.nn as nn
@@ -817,6 +817,7 @@ class AutocastTransformerLayer(TransformerLayer):
         ub_tp_comm_overlap: bool = False,
         autocast_dtype: Any = 16,
         zero_centered_gamma: bool = False,
+        activation: str = 'gelu',
     ) -> None:
         super().__init__(
             hidden_size=hidden_size,
@@ -848,6 +849,7 @@ class AutocastTransformerLayer(TransformerLayer):
             fuse_qkv_params=True,
             zero_centered_gamma=zero_centered_gamma,
             ub_tp_comm_overlap=ub_tp_comm_overlap,
+            activation=activation,
         )
         # use_emha=use_emha,
 
@@ -860,6 +862,7 @@ class AutocastTransformerLayer(TransformerLayer):
         attention_mask: torch.Tensor,
         encoder_output: Optional[torch.Tensor] = None,
         enc_dec_attn_mask: Optional[torch.Tensor] = None,
+        rotary_pos_emb: Optional[Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]] = None,
         inference_params: Optional[Any] = None,
         is_first_microbatch: Optional[bool] = None,
         checkpoint_core_attention: Optional[bool] = False,
@@ -870,6 +873,7 @@ class AutocastTransformerLayer(TransformerLayer):
                 attention_mask,
                 encoder_output=encoder_output,
                 enc_dec_attn_mask=enc_dec_attn_mask,
+                rotary_pos_emb=rotary_pos_emb,
                 inference_params=inference_params,
                 is_first_microbatch=is_first_microbatch,
                 checkpoint_core_attention=checkpoint_core_attention,
@@ -880,6 +884,7 @@ class AutocastTransformerLayer(TransformerLayer):
                 attention_mask,
                 encoder_output=encoder_output,
                 enc_dec_attn_mask=enc_dec_attn_mask,
+                rotary_pos_emb=rotary_pos_emb,
                 inference_params=inference_params,
                 is_first_microbatch=is_first_microbatch,
                 checkpoint_core_attention=checkpoint_core_attention,
@@ -1089,6 +1094,7 @@ class ParallelTransformer(MegatronModule):
                     use_emha=use_emha,
                     ub_tp_comm_overlap=ub_tp_comm_overlap,
                     zero_centered_gamma=normalization == 'layernorm1p',
+                    activation=activation,
                 )
             else:
                 return ParallelTransformerLayer(
@@ -1247,6 +1253,12 @@ class ParallelTransformer(MegatronModule):
                     attention_mask = inputs[1]
                     encoder_output = inputs[2]
                     enc_dec_attn_mask = inputs[3]
+                    if len(inputs) == 9:
+                        rotary_pos_emb = (inputs[4], inputs[5], inputs[6])
+                    elif len(inputs) == 10:
+                        rotary_pos_emb = (inputs[5], inputs[6], inputs[7])
+                    else:
+                        rotary_pos_emb = inputs[4]
                     for index in range(start, end):
                         layer = self._get_layer(index)
                         hidden_states = layer(
@@ -1254,6 +1266,7 @@ class ParallelTransformer(MegatronModule):
                             attention_mask,
                             encoder_output=encoder_output,
                             enc_dec_attn_mask=enc_dec_attn_mask,
+                            rotary_pos_emb=rotary_pos_emb,
                             inference_params=None,
                             is_first_microbatch=self.is_first_microbatch,
                             checkpoint_core_attention=False,
@@ -1537,6 +1550,7 @@ class ParallelTransformer(MegatronModule):
                                 attention_mask,
                                 encoder_output=encoder_output,
                                 enc_dec_attn_mask=enc_dec_attn_mask,
+                                rotary_pos_emb=rotary_pos_emb,
                                 inference_params=self.inference_params,
                                 is_first_microbatch=self.is_first_microbatch,
                                 checkpoint_core_attention=checkpoint_core_attention,
