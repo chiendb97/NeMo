@@ -867,13 +867,21 @@ class AutocastTransformerLayer(TransformerLayer):
         is_first_microbatch: Optional[bool] = None,
         checkpoint_core_attention: Optional[bool] = False,
     ) -> torch.Tensor:
+        # Self attention.
+        if rotary_pos_emb is not None:
+            # self attention pos_emb is (q, q)
+            self_attention_pos_emb = (rotary_pos_emb[0], rotary_pos_emb[0])
+            cross_attention_pos_emb = (rotary_pos_emb[1], rotary_pos_emb[2])
+        else:
+            self_attention_pos_emb = None
+            cross_attention_pos_emb = None
         if self.dtype == torch.float32:
             return super().forward(
                 hidden_states,
                 attention_mask,
                 encoder_output=encoder_output,
                 enc_dec_attn_mask=enc_dec_attn_mask,
-                rotary_pos_emb=rotary_pos_emb,
+                rotary_pos_emb=self_attention_pos_emb,
                 inference_params=inference_params,
                 is_first_microbatch=is_first_microbatch,
                 checkpoint_core_attention=checkpoint_core_attention,
@@ -884,7 +892,7 @@ class AutocastTransformerLayer(TransformerLayer):
                 attention_mask,
                 encoder_output=encoder_output,
                 enc_dec_attn_mask=enc_dec_attn_mask,
-                rotary_pos_emb=rotary_pos_emb,
+                rotary_pos_emb=self_attention_pos_emb,
                 inference_params=inference_params,
                 is_first_microbatch=is_first_microbatch,
                 checkpoint_core_attention=checkpoint_core_attention,
