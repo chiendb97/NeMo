@@ -818,6 +818,7 @@ class AutocastTransformerLayer(TransformerLayer):
         autocast_dtype: Any = 16,
         zero_centered_gamma: bool = False,
         activation: str = 'gelu',
+        bias: bool = True,
     ) -> None:
         super().__init__(
             hidden_size=hidden_size,
@@ -850,6 +851,7 @@ class AutocastTransformerLayer(TransformerLayer):
             zero_centered_gamma=zero_centered_gamma,
             ub_tp_comm_overlap=ub_tp_comm_overlap,
             activation=activation,
+            bias=bias,
         )
         # use_emha=use_emha,
 
@@ -1103,6 +1105,7 @@ class ParallelTransformer(MegatronModule):
                     ub_tp_comm_overlap=ub_tp_comm_overlap,
                     zero_centered_gamma=normalization == 'layernorm1p',
                     activation=activation,
+                    bias=bias,
                 )
             else:
                 return ParallelTransformerLayer(
