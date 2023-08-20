@@ -819,7 +819,13 @@ class AutocastTransformerLayer(TransformerLayer):
         zero_centered_gamma: bool = False,
         activation: str = 'gelu',
         bias: bool = True,
+        normalization='layernorm',
     ) -> None:
+        if normalization == "layernorm":
+            normalization = "LayerNorm"
+        elif normalization == "rmsnorm":
+            normalization = "RMSNorm"
+
         super().__init__(
             hidden_size=hidden_size,
             ffn_hidden_size=ffn_hidden_size,
@@ -852,6 +858,7 @@ class AutocastTransformerLayer(TransformerLayer):
             ub_tp_comm_overlap=ub_tp_comm_overlap,
             activation=activation,
             bias=bias,
+            normalization=normalization,
         )
         # use_emha=use_emha,
 
@@ -1106,6 +1113,7 @@ class ParallelTransformer(MegatronModule):
                     zero_centered_gamma=normalization == 'layernorm1p',
                     activation=activation,
                     bias=bias,
+                    normalization=normalization,
                 )
             else:
                 return ParallelTransformerLayer(
