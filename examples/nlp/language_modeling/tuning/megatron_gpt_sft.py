@@ -101,7 +101,7 @@ def load_from_checkpoint_dir(cls, cfg, trainer, modify_confg_fn):
             app_state.pipeline_model_parallel_split_rank,
             app_state.virtual_pipeline_model_parallel_rank,
         ) = fake_initialize_model_parallel(
-            world_size=app_state.model_parallel_size,
+            world_size=trainer.world_size,
             rank=trainer.global_rank,
             tensor_model_parallel_size_=cfg.model.tensor_model_parallel_size,
             pipeline_model_parallel_size_=cfg.model.pipeline_model_parallel_size,
