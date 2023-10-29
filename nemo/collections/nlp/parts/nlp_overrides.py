@@ -1023,7 +1023,8 @@ class CustomProgressBar(TQDMProgressBar):
             # is truncated to max_steps - step being resumed at
             num_training_batches = trainer.max_steps
         else:
-            num_training_batches = trainer.num_training_batches
+            # num_training_batches = trainer.num_training_batches
+            num_training_batches = trainer.max_steps
         self.train_progress_bar.reset(num_training_batches)
         self.train_progress_bar.initial = 0
         self.train_progress_bar.set_description(f"Epoch {trainer.current_epoch}")
