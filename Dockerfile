@@ -21,6 +21,9 @@ ARG BASE_IMAGE=nvcr.io/nvidia/pytorch:23.10-py3
 # image (by specifying build target as `nemo-deps`)
 FROM ${BASE_IMAGE} as nemo-deps
 
+ENV http_proxy=http://10.60.28.99:81
+ENV https_proxy=http://10.60.28.99:81
+
 # dependency flags; should be declared after FROM
 # torchaudio: not required by default
 ARG REQUIRE_TORCHAUDIO=false
