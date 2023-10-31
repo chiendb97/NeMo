@@ -402,6 +402,7 @@ class GPTDataset(Dataset):
         return sample.astype(np.int64)
 
     def __getitem__(self, idx):
+        logging.info(f"idx: {idx}")
         text = torch.from_numpy(self._get_text(idx))
         if self.add_extra_token:
             tokens = text[:-1].contiguous()
