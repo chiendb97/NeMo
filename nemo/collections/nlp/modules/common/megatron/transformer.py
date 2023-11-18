@@ -15,7 +15,7 @@
 
 """Transformer."""
 from contextlib import nullcontext
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union, Tuple
 
 import torch
 import torch.nn as nn
@@ -789,6 +789,7 @@ class AutocastTransformerLayer(TransformerLayer):
         output_layer_init_method: Callable,
         hidden_dropout: float,
         attention_dropout: float,
+        num_gqa_groups: Optional[int] = None,
         layer_number: Optional[int] = None,
         kv_channels: Optional[int] = None,
         self_attn_mask_type: str = "causal",
@@ -820,6 +821,7 @@ class AutocastTransformerLayer(TransformerLayer):
             output_layer_init_method=output_layer_init_method,
             hidden_dropout=hidden_dropout,
             attention_dropout=attention_dropout,
+            num_gqa_groups=num_gqa_groups,
             layer_number=layer_number,
             kv_channels=kv_channels,
             self_attn_mask_type=self_attn_mask_type,
@@ -828,8 +830,6 @@ class AutocastTransformerLayer(TransformerLayer):
             params_dtype=params_dtype,
             get_rng_state_tracker=get_rng_state_tracker,
             fuse_wgrad_accumulation=fuse_wgrad_accumulation,
-            apply_query_key_layer_scaling=apply_query_key_layer_scaling,
-            attention_softmax_in_fp32=attention_softmax_in_fp32,
             seq_length=seq_length,
             micro_batch_size=micro_batch_size,
             sequence_parallel=sequence_parallel,
@@ -853,16 +853,26 @@ class AutocastTransformerLayer(TransformerLayer):
         attention_mask: torch.Tensor,
         encoder_output: Optional[torch.Tensor] = None,
         enc_dec_attn_mask: Optional[torch.Tensor] = None,
+        rotary_pos_emb: Optional[Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]] = None,
         inference_params: Optional[Any] = None,
         is_first_microbatch: Optional[bool] = None,
         checkpoint_core_attention: Optional[bool] = False,
     ) -> torch.Tensor:
+        # Self attention.
+        if rotary_pos_emb is not None:
+            # self attention pos_emb is (q, q)
+            self_attention_pos_emb = (rotary_pos_emb[0], rotary_pos_emb[0])
+            cross_attention_pos_emb = (rotary_pos_emb[1], rotary_pos_emb[2])
+        else:
+            self_attention_pos_emb = None
+            cross_attention_pos_emb = None
         if self.dtype == torch.float32:
             return super().forward(
                 hidden_states,
                 attention_mask,
                 encoder_output=encoder_output,
                 enc_dec_attn_mask=enc_dec_attn_mask,
+                rotary_pos_emb=self_attention_pos_emb,
                 inference_params=inference_params,
                 is_first_microbatch=is_first_microbatch,
                 checkpoint_core_attention=checkpoint_core_attention,
@@ -873,6 +883,7 @@ class AutocastTransformerLayer(TransformerLayer):
                 attention_mask,
                 encoder_output=encoder_output,
                 enc_dec_attn_mask=enc_dec_attn_mask,
+                rotary_pos_emb=self_attention_pos_emb,
                 inference_params=inference_params,
                 is_first_microbatch=is_first_microbatch,
                 checkpoint_core_attention=checkpoint_core_attention,
@@ -891,6 +902,7 @@ class ParallelTransformer(MegatronModule):
         hidden_size,
         ffn_hidden_size,
         num_attention_heads,
+        num_gqa_groups=None,
         apply_query_key_layer_scaling=False,
         kv_channels=None,
         layer_type=LayerType.encoder,  # it can be a list of types or single type
@@ -1075,6 +1087,7 @@ class ParallelTransformer(MegatronModule):
                     output_layer_init_method=output_layer_init_method,
                     hidden_dropout=hidden_dropout,
                     attention_dropout=attention_dropout,
+                    num_gqa_groups=num_gqa_groups,
                     layer_number=layer_number + layer_number_offset,
                     kv_channels=kv_channels,
                     self_attn_mask_type=self_attn_mask_type.name,
@@ -1252,6 +1265,12 @@ class ParallelTransformer(MegatronModule):
                     attention_mask = inputs[1]
                     encoder_output = inputs[2]
                     enc_dec_attn_mask = inputs[3]
+                    if len(inputs) == 9:
+                        rotary_pos_emb = (inputs[4], inputs[5], inputs[6])
+                    elif len(inputs) == 10:
+                        rotary_pos_emb = (inputs[5], inputs[6], inputs[7])
+                    else:
+                        rotary_pos_emb = inputs[4]
                     # Cache FP8 weight and transpose at (1) the first micro-batch in each global-batch
                     # in training, (2) the first micro-batch in each validation and test routine.
                     # The caching happens in TransformerEngine when passing `is_first_microbatch=True`.
@@ -1265,6 +1284,7 @@ class ParallelTransformer(MegatronModule):
                             attention_mask,
                             encoder_output=encoder_output,
                             enc_dec_attn_mask=enc_dec_attn_mask,
+                            rotary_pos_emb=rotary_pos_emb,
                             inference_params=None,
                             is_first_microbatch=is_first_microbatch,
                             checkpoint_core_attention=False,
@@ -1562,6 +1582,7 @@ class ParallelTransformer(MegatronModule):
                                 attention_mask,
                                 encoder_output=encoder_output,
                                 enc_dec_attn_mask=enc_dec_attn_mask,
+                                rotary_pos_emb=rotary_pos_emb,
                                 inference_params=self.inference_params,
                                 is_first_microbatch=is_first_microbatch,
                                 checkpoint_core_attention=checkpoint_core_attention,

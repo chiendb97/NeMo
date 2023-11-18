@@ -333,6 +333,7 @@ class MegatronGPTModel(MegatronBaseModel, TextGeneration):
                 max_position_embeddings=self.cfg.max_position_embeddings,
                 num_layers=self.cfg.num_layers,
                 num_attention_heads=self.cfg.num_attention_heads,
+                num_gqa_groups=self.cfg.get('num_gqa_groups', None),
                 apply_query_key_layer_scaling=self.cfg.get('apply_query_key_layer_scaling', True),
                 kv_channels=self.cfg.get('kv_channels', None),
                 ffn_hidden_size=self.cfg.ffn_hidden_size,
