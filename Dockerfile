@@ -44,9 +44,6 @@ RUN apt-get update && \
 
 WORKDIR /workspace/
 
-# Install pytorch
-RUN pip install torch torchvision torchaudio --upgrade
-
 # Install megatron core, this can be removed once 0.3 pip package is released
 # We leave it here in case we need to work off of a specific commit in main
 RUN git clone https://github.com/NVIDIA/Megatron-LM.git && \
@@ -62,7 +59,7 @@ RUN git clone https://github.com/NVIDIA/apex.git && \
 
 RUN git clone https://github.com/NVIDIA/TransformerEngine.git && \
   cd TransformerEngine && \
-  git fetch origin 66d91d5219f295ec1e2e714a4926ddb67a2b8f80 && \
+  git fetch origin 6159af4eee35a71c1b22654e27212aa8eff8a5a2 && \
   git checkout FETCH_HEAD && \
   git submodule init && git submodule update && \
   NVTE_FRAMEWORK=pytorch NVTE_WITH_USERBUFFERS=1 MPI_HOME=/usr/local/mpi pip install .
