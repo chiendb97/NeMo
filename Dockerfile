@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG BASE_IMAGE=nvcr.io/nvidia/pytorch:23.08-py3
+ARG BASE_IMAGE=nvcr.io/nvidia/pytorch:23.10-py3
 
 # build an image that includes only the nemo dependencies, ensures that dependencies
 # are included first for optimal caching, and useful for building a development
@@ -43,17 +43,21 @@ RUN apt-get update && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace/
+
+# Install pytorch
+RUN pip install torch torchvision torchaudio --upgrade
+
 # Install megatron core, this can be removed once 0.3 pip package is released
 # We leave it here in case we need to work off of a specific commit in main
 RUN git clone https://github.com/NVIDIA/Megatron-LM.git && \
   cd Megatron-LM && \
   git checkout e122536b7645edcb7ebf099b5c92a443f7dbf8e7 && \
-  pip install .
+  pip install -e .
 
 # Distributed Adam support for multiple dtypes
 RUN git clone https://github.com/NVIDIA/apex.git && \
   cd apex && \
-  git checkout 52e18c894223800cb611682dce27d88050edf1de && \
+  git checkout fd4ae7d18f4b5150050bdbebb31b2d160413671d && \
   pip install install -v --no-build-isolation --disable-pip-version-check --no-cache-dir --config-settings "--build-option=--cpp_ext --cuda_ext --fast_layer_norm --distributed_adam --deprecated_fused_adam" ./
 
 RUN git clone https://github.com/NVIDIA/TransformerEngine.git && \
