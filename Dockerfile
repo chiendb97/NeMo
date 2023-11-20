@@ -48,7 +48,7 @@ WORKDIR /workspace/
 # We leave it here in case we need to work off of a specific commit in main
 RUN git clone https://github.com/NVIDIA/Megatron-LM.git && \
   cd Megatron-LM && \
-  git checkout e122536b7645edcb7ebf099b5c92a443f7dbf8e7 && \
+  git checkout 9290c730d04b482be8fae92a4186fe4ff0c95270 && \
   pip install -e .
 
 # Distributed Adam support for multiple dtypes
