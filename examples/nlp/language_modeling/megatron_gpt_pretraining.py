@@ -13,6 +13,9 @@
 # limitations under the License.
 
 
+import torch._dynamo
+torch._dynamo.config.suppress_errors = True
+
 import torch.multiprocessing as mp
 from omegaconf.omegaconf import OmegaConf, open_dict
 
