@@ -16,6 +16,7 @@ import itertools
 import os
 import queue
 import warnings
+from contextlib import nullcontext
 from dataclasses import fields
 from functools import partial
 from typing import Any, Dict, Iterator, List, Optional, Union
@@ -234,11 +235,15 @@ class MegatronGPTModel(MegatronBaseModel, TextGeneration):
                 virtual_pipeline_model_parallel_size=self.cfg.get('virtual_pipeline_model_parallel_size', None),
             )
         else:
-            self.model = build_model(
-                model_provider_func=self.model_provider_func,
-                wrap_with_ddp=False,
-                virtual_pipeline_model_parallel_size=self.cfg.get('virtual_pipeline_model_parallel_size', None),
-            )
+            make_model_context = nullcontext
+            if HAVE_TE and self.cfg.get('fp8', False) and self.cfg.get('fp8_params', False):
+                make_model_context = transformer_engine.pytorch.fp8_model_init
+            with make_model_context():
+                self.model = build_model(
+                    model_provider_func=self.model_provider_func,
+                    wrap_with_ddp=False,
+                    virtual_pipeline_model_parallel_size=self.cfg.get('virtual_pipeline_model_parallel_size', None),
+                )
 
         # if we're not using interleaved, then self.model is a module.
         if self.cfg.get('virtual_pipeline_model_parallel_size', None) is None:
@@ -333,7 +338,6 @@ class MegatronGPTModel(MegatronBaseModel, TextGeneration):
                 max_position_embeddings=self.cfg.max_position_embeddings,
                 num_layers=self.cfg.num_layers,
                 num_attention_heads=self.cfg.num_attention_heads,
-                num_gqa_groups=self.cfg.get('num_gqa_groups', None),
                 apply_query_key_layer_scaling=self.cfg.get('apply_query_key_layer_scaling', True),
                 kv_channels=self.cfg.get('kv_channels', None),
                 ffn_hidden_size=self.cfg.ffn_hidden_size,
@@ -472,12 +476,6 @@ class MegatronGPTModel(MegatronBaseModel, TextGeneration):
                             [p for p in layer.parameters() if not getattr(p, '_disable_overlap_grad_sync', False)]
                         )
             buckets.reverse()
-            used_params = set()
-            for bucket in buckets:
-                used_params.update(bucket)
-            remaining_params = [p for p in self.parameters() if p not in used_params]
-            if remaining_params:
-                buckets.append(remaining_params)
             self.distributed_adam_buckets = buckets
 
         return super().configure_optimizers()
