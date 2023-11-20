@@ -57,9 +57,9 @@ RUN git clone https://github.com/NVIDIA/apex.git && \
   git checkout fd4ae7d18f4b5150050bdbebb31b2d160413671d && \
   pip install install -v --no-build-isolation --disable-pip-version-check --no-cache-dir --config-settings "--build-option=--cpp_ext --cuda_ext --fast_layer_norm --distributed_adam --deprecated_fused_adam" ./
 
-RUN git clone https://github.com/NVIDIA/TransformerEngine.git && \
+RUN git clone https://github.com/timmoon10/TransformerEngine.git && \
   cd TransformerEngine && \
-  git fetch origin 6159af4eee35a71c1b22654e27212aa8eff8a5a2 && \
+  git fetch origin 5215774fcbe465a384bd91b5cbd311ffc08ab3dc && \
   git checkout FETCH_HEAD && \
   git submodule init && git submodule update && \
   NVTE_FRAMEWORK=pytorch NVTE_WITH_USERBUFFERS=1 MPI_HOME=/usr/local/mpi pip install .
